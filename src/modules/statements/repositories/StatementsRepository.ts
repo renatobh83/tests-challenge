@@ -15,50 +15,61 @@ export class StatementsRepository implements IStatementsRepository {
 
   async create({
     user_id,
+    sender_id,
     amount,
     description,
-    type
+    type,
   }: ICreateStatementDTO): Promise<Statement> {
     const statement = this.repository.create({
       user_id,
+      sender_id,
       amount,
       description,
-      type
+      type,
     });
 
     return this.repository.save(statement);
   }
 
-  async findStatementOperation({ statement_id, user_id }: IGetStatementOperationDTO): Promise<Statement | undefined> {
+  async findStatementOperation({
+    statement_id,
+    user_id,
+  }: IGetStatementOperationDTO): Promise<Statement | undefined> {
     return this.repository.findOne(statement_id, {
-      where: { user_id }
+      where: { user_id },
     });
   }
 
-  async getUserBalance({ user_id, with_statement = false }: IGetBalanceDTO):
-    Promise<
-      { balance: number } | { balance: number, statement: Statement[] }
-    >
-  {
+  async getUserBalance({
+    user_id,
+    with_statement = false,
+  }: IGetBalanceDTO): Promise<
+    { balance: number } | { balance: number; statement: Statement[] }
+  > {
     const statement = await this.repository.find({
-      where: { user_id }
+      where: [{ user_id }, { sender_id: user_id }],
     });
 
     const balance = statement.reduce((acc, operation) => {
-      if (operation.type === 'deposit') {
-        return acc + operation.amount;
-      } else {
-        return acc - operation.amount;
+      if (operation.type === "deposit") {
+        return Number(acc) + Number(operation.amount);
       }
-    }, 0)
+      if (operation.type === "transfer") {
+        if (operation.sender_id === user_id) {
+          return Number(acc) - Number(operation.amount);
+        }
+        return Number(acc) + Number(operation.amount);
+      }
+      return Number(acc) - Number(operation.amount);
+    }, 0);
 
     if (with_statement) {
       return {
         statement,
-        balance
-      }
+        balance,
+      };
     }
 
-    return { balance }
+    return { balance };
   }
 }

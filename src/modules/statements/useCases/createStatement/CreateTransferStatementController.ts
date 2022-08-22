@@ -9,19 +9,20 @@ enum OperationType {
   TRANSFER = "transfer",
 }
 
-export class CreateStatementController {
+export class CreateTransferStatementController {
   async execute(request: Request, response: Response): Promise<Response> {
-    const { id: user_id } = request.user;
+    const { user_id } = request.params;
+    const { id: sender_id } = request.user;
 
     const { amount, description } = request.body;
 
-    const splittedPath = request.originalUrl.split("/");
-    const type = splittedPath[splittedPath.length - 1] as OperationType;
+    const type = "transfer" as OperationType;
 
     const createStatement = container.resolve(CreateStatementUseCase);
 
     const statement = await createStatement.execute({
       user_id,
+      sender_id,
       type,
       amount,
       description,
